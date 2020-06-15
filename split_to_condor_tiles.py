@@ -1,3 +1,39 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# GIMP plugin to split a CondorV2 Terragen tile into a 4x4 grid of tiles ready for
+# use in a Condor V2 landscape scenery.
+
+# (c) BlueFang 2020
+#
+#   History:
+#
+#   v0.1: First published on Github
+
+#   Credits:
+#   The splitting of file into tiles was derrived from ofn-tiles gimp plugin
+#   The documentation / and how to save to .dds was derrived from /solidxsnake
+#   plugins posted on the condorsoaring.com forums
+
+
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation; either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This very file is the complete source code to the program.
+#
+#   If you make and redistribute changes to this code, please mark it
+#   in reasonable ways as different from the original version. 
+#   
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   The GPL v3 licence is available at: https://www.gnu.org/licenses/gpl-3.0.en.html
+
+
 import sys,os,os.path,re,glob,traceback
 from gimpfu import *
 

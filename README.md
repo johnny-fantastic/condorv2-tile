@@ -4,7 +4,7 @@
 
 
 
-This plugin is more-or-less a combination of the .dds export plugin from /solidsnake and the ofn-tiles plugin.
+This plugin is more-or-less a combination of ofn-tiles plugin and the .dds exporter from /solidsnake
 
 It is used to process a source folder of terragen named image files - CCRR.png - and will split each terragen file into 16 sub tiles (4x4 grid) - and export each as a .dds file named appropriately for use Condor V2.
 
