@@ -1,39 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# GIMP plugin to split a CondorV2 Terragen tile into a 4x4 grid of tiles ready for
-# use in a Condor V2 landscape scenery.
-
-# (c) BlueFang 2020
-#
-#   History:
-#
-#   v0.1: First published on Github
-
-#   Credits:
-#   The splitting of file into tiles was derrived from ofn-tiles gimp plugin
-#   The documentation / and how to save to .dds was derrived from /solidxsnake
-#   plugins posted on the condorsoaring.com forums
-
-
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published
-#   by the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This very file is the complete source code to the program.
-#
-#   If you make and redistribute changes to this code, please mark it
-#   in reasonable ways as different from the original version. 
-#   
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   The GPL v3 licence is available at: https://www.gnu.org/licenses/gpl-3.0.en.html
-
-
 import sys,os,os.path,re,glob,traceback
 from gimpfu import *
 
@@ -49,7 +13,7 @@ def iterate_tiles(terragen_col, terragen_row):
             yield column+column_base, row+row_base,3-column,3-row
 
 
-def convert_files(directory, namePattern, saveBMP):
+def convert_files(directory, namePattern):
     print 'convert_files for directory'
     print directory
 
@@ -65,7 +29,7 @@ def convert_files(directory, namePattern, saveBMP):
     try:
 
         output_dir = os.path.join(directory, 'dds')
-        
+
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
             
@@ -74,9 +38,6 @@ def convert_files(directory, namePattern, saveBMP):
             absname = os.path.abspath(fname)
             root, extension = os.path.splitext(absname)
             basename = os.path.split(root)[1]
-            bmp_base_name = basename + '.bmp'
-            bmp_file_name = os.path.join(directory,bmp_base_name)
-            print 'bmp file path {}'.format(bmp_file_name)
 
             if len(basename) != 4:
                 print 'image file name must be of the format ccrr.png'
@@ -154,27 +115,8 @@ def convert_files(directory, namePattern, saveBMP):
                 image.remove_layer(tile)
                 step += 1
 
-            
             if workingLayer:
                 image.remove_layer(workingLayer)
-
-            if saveBMP:
-                print 'save bmp option is checked... saving input file as 24bit RGB .bmp'
-                saving_image = pdb.gimp_image_duplicate(image)
-                saving_drawable = pdb.gimp_image_merge_visible_layers(saving_image, 1)
-                # this effectively removes the alpha layer 
-                # we have to set it to completely opaque first because
-                # GIMP offers no option of just removing the alpha layer
-                # when it does a flatten it ALWAYS applies the alpha layer value
-                # to the background color - which is the dumbest thing ever
-                pdb.gimp_drawable_levels(saving_drawable, 4, 0, 1, 0, 1, 1, 1, 0)
-                pdb.gimp_layer_flatten(saving_drawable)
-
-                if os.path.isfile(bmp_file_name):
-                    os.remove(bmp_file_name)
-                pdb.file_bmp_save(saving_image, saving_drawable, bmp_file_name, bmp_file_name)
-                pdb.gimp_image_delete(saving_image)
-
             image.undo_thaw()
             pdb.gimp_image_delete(image)
 
@@ -197,8 +139,7 @@ register(
     '',
     [
         (PF_DIRNAME,    'directory',    'Directory',   '.'),
-        (PF_STRING,     'namePattern',  'Tile name',   '*.png'),
-        (PF_TOGGLE,     'saveBMP',      'Export to BMP',    0)
+        (PF_STRING,     'namePattern',  'Tile name',   '*.png')
     ],
     [
         (PF_IMAGE,      'image',    'Opened image', None) 
@@ -209,4 +150,4 @@ register(
 
 main()
 
-# (PF_TOGGLE, "p2",   "TOGGLE:", 1), # initially True, checked.  Alias PF_BOOL
+
