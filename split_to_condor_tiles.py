@@ -34,9 +34,10 @@
 #   The GPL v3 licence is available at: https://www.gnu.org/licenses/gpl-3.0.en.html
 
 
-import sys,os,os.path,re,glob,traceback
+import sys,os,os.path,re,glob,traceback,math
 from gimpfu import *
-
+from array import *
+from random import *
 
 #sys.stderr = open( 'c:\\temp\\gimpstderr.txt', 'w')
 #sys.stdout = open( 'c:\\temp\\gimpstdout.txt', 'w')
@@ -184,20 +185,165 @@ def convert_files(directory, namePattern, saveBMP):
 
     print 'split complete!'
 
+
+def make_trees(directory, namePattern, hasTree, deciduousAmt, deciduousColor, coniferousColor):
+    print 'make the trees'
+
+    try:
+
+        print 'diciduous color ='
+        print deciduousColor
+        
+        filedescription = os.path.join(directory, namePattern)
+        filelist = pdb.file_glob(filedescription,0)[1]
+        seed()
+        output_dir = os.path.join(directory, 'forest')
+
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
+
+        print 'looping through *.png files'
+
+        for fname in filelist:
+
+            absname = os.path.abspath(fname)
+            root, extension = os.path.splitext(absname)
+            basename = os.path.split(root)[1]
+
+            deciduous_name = 'b{}.bmp'.format(basename)
+            coniferous_name = 's{}.bmp'.format(basename)
+
+            deciduous_path = os.path.join(output_dir, deciduous_name)
+            coniferous_path = os.path.join(output_dir, coniferous_name)
+
+            if len(basename) != 4:
+                print 'image file name must be of the format ccrr.png'
+                continue
+
+            sourceLayer = None
+
+            image = pdb.gimp_file_load(absname, absname)
+            image.undo_freeze()
+
+            deciduous_img = pdb.gimp_image_duplicate(image)
+            coniferous_img = pdb.gimp_image_duplicate(image)
+
+            deciduous_img.undo_freeze()
+            coniferous_img.undo_freeze()
+
+            sourceLayer = pdb.gimp_layer_new_from_visible(image, image, "working")
+
+            width = sourceLayer.width
+            height = sourceLayer.height
+
+            deciduous_layer = gimp.Layer(deciduous_img, "deciduous_layer", width, height, sourceLayer.type, sourceLayer.opacity, sourceLayer.mode)
+            deciduous_img.add_layer(deciduous_layer, 0)
+            pdb.gimp_edit_clear(deciduous_layer)
+            deciduous_layer.flush()
+
+            coniferous_layer = gimp.Layer(coniferous_img, "coniferous_layer", width, height, sourceLayer.type, sourceLayer.opacity, sourceLayer.mode)
+            coniferous_img.add_layer(coniferous_layer, 0)
+            pdb.gimp_edit_clear(coniferous_layer)
+            coniferous_layer.flush()
+
+            src_rgn = sourceLayer.get_pixel_rgn(0,0,width,height,TRUE,FALSE)
+            src_pixels = array("B", src_rgn[0:width, 0:height])
+
+            b_rgn = deciduous_layer.get_pixel_rgn(0,0,width,height,TRUE,FALSE)
+            b_pixels = array("B", b_rgn[0:width, 0:height])
+
+            s_rgn = coniferous_layer.get_pixel_rgn(0,0,width,height,TRUE,FALSE)
+            s_pixels = array("B", s_rgn[0:width, 0:height])
+
+            p_size = len(src_rgn[0,0])
+
+            for y in xrange(0, height - 1):
+                for x in xrange(0, width - 1):
+
+                    pos = (x + width * y) * p_size
+                    src_pixel = src_pixels[pos : pos + p_size]
+
+                    b_pixel = [0,0,0,255]
+                    s_pixel = [0,0,0,255]
+
+                    # are we dealing with a non transparent pixel
+                    # we only replace non transparent pixels - i.e., the alpha layer
+                    # must be used to define where trees live
+                    if src_pixel[3] == 255:
+
+                        # if hasTree = 0 - there will be no trees at all
+                        if hasTree > 0:
+
+                            # hasTree defines the "chance" that the defined pixel is a tree
+                            if randrange(100) < hasTree:
+
+                                # if the pixel has a tree - deciduousAmt defines the chance it is a deciduous tree
+                                if randrange(100) < deciduousAmt:
+                                    # make deciduous
+                                    b_pixel =  deciduousColor
+                                # if it is a tree and it is not a deciduous tree, then it must be a coniferous tree
+                                else:
+                                    # make coniferous
+                                    s_pixel = coniferousColor
+                        
+                        
+                    b_pixels[pos : pos + p_size] = array("B", b_pixel)
+                    s_pixels[pos : pos + p_size] = array("B", s_pixel)
+
+                    
+
+            # python is weird... cool, but weird...
+            b_rgn[0:width, 0:height] = b_pixels.tostring()
+            s_rgn[0:width, 0:height] = s_pixels.tostring()
+
+            coniferous_layer.flush()
+            coniferous_layer.update(0,0,width,height)
+            deciduous_layer.flush()
+            deciduous_layer.update(0,0,width,height)
+
+            # this removes the alpha layer from our tree images
+            pdb.gimp_drawable_levels(coniferous_layer, 4, 0, 1, 0, 1, 1, 1, 0)
+            pdb.gimp_layer_flatten(coniferous_layer)
+
+            pdb.gimp_drawable_levels(deciduous_layer, 4, 0, 1, 0, 1, 1, 1, 0)
+            pdb.gimp_layer_flatten(deciduous_layer)
+
+            coniferous_img.undo_thaw()
+            deciduous_img.undo_thaw()
+
+            if os.path.isfile(coniferous_path):
+                    os.remove(coniferous_path)
+            if os.path.isfile(deciduous_path):
+                    os.remove(deciduous_path)
+
+            pdb.file_bmp_save(coniferous_img, coniferous_layer, coniferous_path, coniferous_path)
+            pdb.file_bmp_save(deciduous_img, deciduous_layer, deciduous_path, deciduous_path)
+
+            image.undo_thaw()
+            pdb.gimp_image_delete(image)
+            
+            
+
+    except Exception as e:
+        pdb.gimp_message(e.args[0])
+        print traceback.format_exc()
+
+
 author='bluefang'
 year='2020'
-exportMenu='<Image>/File/Export/Export Condor Tiles'
+exportMenu='<Image>/File/Export/Condor: Split Tiles...'
 exportDesc='Split image into 4x4 grid and export each to condor formatted tCCRR.dds file'
 openDesc='Split files into 4x4 grid and export each grid to condor formatted .dds file'
 whoiam='\n'+os.path.abspath(sys.argv[0])
+treeDesc = 'Create bXXX and sXXXX forest files for Condor based on .png input file where the alpha channel defines where trees grow.'
 
 register(
     'split-to-condor-tiles',
-    openDesc,openDesc+whoiam,author,author,year,'Split to Condor files...',
+    openDesc,openDesc+whoiam,author,author,year,'Condor: Convert and split to .dds tiles...',
     '',
     [
         (PF_DIRNAME,    'directory',    'Directory',   '.'),
-        (PF_STRING,     'namePattern',  'Tile name',   '*.png'),
+        (PF_STRING,     'namePattern',  'Input File Type',   '*.png'),
         (PF_TOGGLE,     'saveBMP',      'Export to BMP',    0)
     ],
     [
@@ -207,6 +353,26 @@ register(
     menu='<Image>/File/Open'
 )
 
+
+register(
+    'condor-tree-density',
+    treeDesc,treeDesc+whoiam,author,author,year,'Condor: Forest tile creator...',
+    '',
+    [
+        (PF_DIRNAME,    'directory',        'Directory',   '.'),
+        (PF_STRING,     'namePattern',      'Input File Type',   '*.png'),
+        (PF_SLIDER,     "hasTree",          "Tree Density", 100, (0, 100, 1)),
+        (PF_SLIDER,     "deciduousAmt",     "Deciduous Density", 70, (0, 100, 1)),
+        (PF_COLOR,      "deciduousColor",   "Deciduous Color", (0.0, 1.0, 0.0)),
+        (PF_COLOR,      "coniferousColor",  "Coniferous Color", (1.0, 0.0, 1.0))
+    ],
+    [
+        (PF_IMAGE,      'image',    'Opened image', None) 
+    ],
+    make_trees,
+    menu='<Image>/File/Open'
+)
+
+
 main()
 
-# (PF_TOGGLE, "p2",   "TOGGLE:", 1), # initially True, checked.  Alias PF_BOOL
